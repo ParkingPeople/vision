@@ -1,19 +1,13 @@
-# Parking Area Detection
-Free parking area detection whether free space or not and draw class activation map  
+# Vision
 
-![](https://github.com/kairess/car_parking_class_activation_map/raw/master/result/01.png)  
+Vision private API
 
-![](https://github.com/kairess/car_parking_class_activation_map/raw/master/result/02.png)  
+## Dependencies
 
-![](https://github.com/kairess/car_parking_class_activation_map/raw/master/result/03.png)  
+See [requirements.txt](requirements.txt)
 
-## Dependency
-- Python 3
-- tensorflow
-- keras
-- numpy
-- matplotlib
-- scipy
+## Run
 
-## Dataset
-- Find a Car Park https://www.kaggle.com/daggysheep/find-a-car-park
+```shell
+pip install -r requirements.txt
+uvicorn predict:app

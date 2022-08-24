@@ -1,15 +1,16 @@
-import numpy as np
-import tensorflow as tf
-from rich import print
+import os
+import shutil
+import tempfile
+from typing import List
 
-from fastapi import FastAPI, File, UploadFile
+import tensorflow as tf
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from rich import print
 
 UPLOAD_PATH = "uploads"
 
 TFLITE_FILE_PATH = "converted_model.tflite"
-
-INKEY = "input_1"
-OUTKEY = "dense"
+DEFAULT_SIGNATURE_KEY = "serving_default"
 
 WIDTH = 224
 HEIGHT = 224
@@ -19,8 +20,15 @@ PRECISION = 4
 EXP = 10**PRECISION
 
 
+interpreter = tf.lite.Interpreter(TFLITE_FILE_PATH)
+siglist = interpreter.get_signature_list()
+print(f"{siglist=}")
+
+
+INKEY = siglist[DEFAULT_SIGNATURE_KEY]["inputs"][0]
+OUTKEY = siglist[DEFAULT_SIGNATURE_KEY]["outputs"][0]
+runner = interpreter.get_signature_runner()
 app = FastAPI()
-runner = None
 
 
 def run_model(runner, input_path):
@@ -37,20 +45,29 @@ def run_model(runner, input_path):
     return int(round(output[OUTKEY][0][1], PRECISION) * EXP) / EXP
 
 
-def main():
-    # load model
-    interpreter = tf.lite.Interpreter(TFLITE_FILE_PATH)
-    siglist = interpreter.get_signature_list()
-    print(f"{siglist=}")
+@app.post("/upload", responses=[])
+def upload(files: List[UploadFile] = File(...)):
+    if runner == None:
+        raise HTTPException(status_code=500, detail="Model was not loaded")
 
-    global runner
-    runner = interpreter.get_signature_runner()
+    results = {}
+    for file in files:
+        fd, path = tempfile.mkstemp()
+        try:
+            with os.fdopen(fd, "wb") as tmp:
+                shutil.copyfileobj(file.file, tmp)
+                results[file.filename] = run_model(runner, path)
+        except Exception as e:
+            is_format_error = isinstance(e, IOError)
+            print(e)
+            raise HTTPException(
+                status_code=415 if is_format_error else 500,
+                detail="Uploaded images were malformed"
+                if is_format_error
+                else "There was an error uploading the files",
+            )
+        finally:
+            os.remove(path)
+            file.file.close()
 
-
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-
-if __name__ == "__main__":
-    main()
+    return results
