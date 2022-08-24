@@ -7,14 +7,8 @@ import tensorflow as tf
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from rich import print
 
-UPLOAD_PATH = "uploads"
-
 TFLITE_FILE_PATH = "converted_model.tflite"
 DEFAULT_SIGNATURE_KEY = "serving_default"
-
-WIDTH = 224
-HEIGHT = 224
-CHANNELS = 3
 
 PRECISION = 4
 EXP = 10**PRECISION
@@ -22,7 +16,14 @@ EXP = 10**PRECISION
 
 interpreter = tf.lite.Interpreter(TFLITE_FILE_PATH)
 siglist = interpreter.get_signature_list()
+inputd = interpreter.get_input_details()
 print(f"{siglist=}")
+print(f"{inputd=}")
+
+shape = inputd[0]["shape"]
+WIDTH = shape[1]
+HEIGHT = shape[2]
+CHANNELS = shape[3]
 
 
 INKEY = siglist[DEFAULT_SIGNATURE_KEY]["inputs"][0]
@@ -35,17 +36,11 @@ def run_model(runner, input_path):
     prep = tf.keras.preprocessing.image.img_to_array(
         tf.keras.preprocessing.image.load_img(input_path, target_size=(WIDTH, HEIGHT))
     )
-    output = runner(
-        **{
-            INKEY: tf.constant(
-                prep, shape=(1, WIDTH, HEIGHT, CHANNELS), dtype=tf.float32
-            )
-        }
-    )
+    output = runner(**{INKEY: tf.constant(prep, shape=shape, dtype=tf.float32)})
     return int(round(output[OUTKEY][0][1], PRECISION) * EXP) / EXP
 
 
-@app.post("/upload", responses=[])
+@app.post("/upload")
 def upload(files: List[UploadFile] = File(...)):
     if runner == None:
         raise HTTPException(status_code=500, detail="Model was not loaded")
