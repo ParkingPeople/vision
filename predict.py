@@ -1,7 +1,7 @@
 import os
 import shutil
 import tempfile
-from typing import List
+from typing import List, Callable
 
 import tensorflow as tf
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -32,7 +32,7 @@ runner = interpreter.get_signature_runner()
 app = FastAPI()
 
 
-def run_model(runner, input_path):
+def run_model(runner: Callable, input_path: str):
     prep = tf.keras.preprocessing.image.img_to_array(
         tf.keras.preprocessing.image.load_img(input_path, target_size=(WIDTH, HEIGHT))
     )
