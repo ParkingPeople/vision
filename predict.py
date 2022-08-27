@@ -17,8 +17,8 @@ EXP = 10**PRECISION
 interpreter = tf.lite.Interpreter(TFLITE_FILE_PATH)
 siglist = interpreter.get_signature_list()
 inputd = interpreter.get_input_details()
-print(f"{siglist=}")
-print(f"{inputd=}")
+print(f"siglist {siglist}")
+print(f"inputd {inputd}")
 
 shape = inputd[0]["shape"]
 WIDTH = shape[1]
